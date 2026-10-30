@@ -6,6 +6,8 @@ export const User = new Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   balance: { type: Number, default: 0 },
+  lockedBalance: {type: Number, required: true, default: 0, min: 0
+}
 })
 
 export const UserModel = mongoose.model("users", User )

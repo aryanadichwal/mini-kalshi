@@ -66,14 +66,19 @@ export async function onramp(req, res) {
     try{
         const {success, data} = OnrampSchema.safeParse(req.body)
         if(!success){
-            return res.status().json({"Invalid amount"})
+            return res.status(422).json({error:"Invalid amount"})
         }
-        const user = await UserModel.findByIdAndUpdate(req.userId,
-            {$inc: {balance: amount}},
+        const user = await UserModel.findByIdAndUpdate(
+            req.userId,
+            {$inc: {balance: data.amount}},
             { new : true})
 
-        return res.json({balance: user.balance})
-    } catch (e){
-        return res.status().json({error:e.message})
+        if (!user) {
+            return res.status(404).json({ message: "User not found" })
+        }
+
+        return res.status(200).json({balance: user.balance})
+    } catch (e) {
+        return res.status(500).json({message:e.message})
     }
 }

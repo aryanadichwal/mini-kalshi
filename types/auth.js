@@ -14,5 +14,5 @@ export const SigninSchema = z.object({
 
 
 export const OnrampSchema = z.object({
-    amount: z.number().int().positive()
+    amount: z.number().int().positive().max(1_000_000)
 })
