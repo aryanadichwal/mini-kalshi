@@ -5,8 +5,8 @@ const { Schema } = mongoose
 export const User = new Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
-  balance: { type: Number, default: 0 },
-  lockedBalance: {type: Number, required: true, default: 0, min: 0
+  usdbalance: { type: Number, default: 0 },
+  lockedusdBalance: {type: Number, required: true, default: 0, min: 0
 }
 })
 

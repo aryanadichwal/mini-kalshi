@@ -1,8 +1,14 @@
-import { CreateMarketSchema } from "../types/market"
+import { CreateMarketSchema, CreateOrderSchema } from "../types/market"
 import { MarketModel } from "../model/markets"
-import { orderbookModel } from "../model/orderbook"
+import { orderbookModel ,} from "../model/orderbook"
 import mongoose from "mongoose"
-
+import { createOrderModel } from "../model/createorder"
+import { opposite, addStock , updatemaker, recordTrade} from "../helpers/market"
+import { UserModel } from "../model/user"
+import { fillModel } from "../model/fill"
+import { stockbalanceModel } from "../model/stockbalance"
+import { Bid } from "../model/bids"
+import { Ask } from "../model/asks"
 
 export async function createMarket(req, res) {
     const { success , data } = CreateMarketSchema.safeParse(req.body)
@@ -71,3 +77,107 @@ export async function createMarket(req, res) {
         }  
     }
 }
+
+export async function createOrder(req, res){
+    const { success, data} = CreateOrderSchema.safeParse(req.body)
+    if(!success){
+        return res.status(400).json({error:"Invalid order request"})
+    }
+    const { marketId, type, side, price, quantity } = data
+
+    if (!Number.isSafeInteger(price * quantity)){
+        return res.status(400).json({
+        error: "Order amount is too large"
+        })
+    }
+    let session
+    try{
+        let result 
+        session = await mongoose.startSession()  
+        await session.withTransaction(async()=>{
+            const market = await MarketModel.findOne({
+                _id: marketId,
+                resolution: null
+            }).session(session)
+
+            if(!market){
+                throw new Error("MARKET_NOT_FOUND")
+            }
+        
+            const orderbook = await orderbookModel.findOne({
+                marketId: marketId,
+                type: side
+            }).session(session)
+
+            if(!orderbook){
+                throw new Error("ORDERBOOK_NOT_FOUND")
+            }
+
+            const userId = req.userId
+
+            let remainingQty = quantity
+            const oppositeSide = opposite(side)
+
+            if (type === "buy") {
+                const reserved = price * quantity
+                const updated = await UserModel.updateOne(
+                {
+                _id: userId,
+                usdbalance: {$gte: reserved}
+                },
+                {
+                    $inc: {
+                        usdbalance: -reserved,
+                        lockedusdBalance: reserved
+                    }
+                },{session})
+
+                if(resrvedResult.matchedCount === 0){
+                    throw new Error("INSUFFICIENT_USD")
+                }
+
+            } else {
+
+                const stock = await stockbalanceModel.findOne({
+                    userId,
+                    marketId,
+                    type: side
+                }).session(session)
+                
+                if(!stock || stock.quantity - stock.lockedQuantity < quantity){
+                    throw new Error("INSUFFICIENT_STOCK")
+                }
+
+                stock.lockedQuantity +=quantity
+                await stock.save({session})
+            }
+            
+            const Model = type === "buy" ? Bid : Ask
+
+            const [incoming] = await Model.create(
+                [{
+                    orderbookId: orderbook_id,
+                    userId,
+                    stockType: side,
+                    action: type, 
+                    price,
+                    qty: quantity,
+                    remainingQty: quantity, 
+                    status:"OPEN"
+                }],
+                { session }
+            )
+            })
+
+            
+
+
+    } catch (e) {
+        return res.status(500).json({error:e.message})
+    } finally {
+        if (session){
+            await session.endSession()
+        }
+    }
+}
+

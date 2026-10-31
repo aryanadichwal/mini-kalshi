@@ -6,3 +6,10 @@ export const CreateMarketSchema = z.object({
 })
 
 
+export const CreateOrderSchema = z.object({
+    marketId: z.string().regex(/^[a-f\d]{24}$/i),
+    price: z.number().int().min(1).max(99),
+    quantity: z.number().int().positive().min(1),
+    type: z.enum(["buy", "sell"]),
+    side: z.enum(["YES", "NO"])
+})
