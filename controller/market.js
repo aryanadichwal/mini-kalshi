@@ -9,6 +9,7 @@ import { fillModel } from "../model/fill"
 import { stockbalanceModel } from "../model/stockbalance"
 import { Bid } from "../model/bids"
 import { Ask } from "../model/asks"
+import { effect } from "zod/v3"
 
 export async function createMarket(req, res) {
     const { success , data } = CreateMarketSchema.safeParse(req.body)
@@ -156,7 +157,7 @@ export async function createOrder(req, res){
 
             const [incoming] = await Model.create(
                 [{
-                    orderbookId: orderbook_id,
+                    orderbookId: orderbook._id,
                     userId,
                     stockType: side,
                     action: type, 
@@ -167,6 +168,54 @@ export async function createOrder(req, res){
                 }],
                 { session }
             )
+
+            const candidates = []
+
+            if (type == "buy"){
+                //BUY YES <-> SELL YES or BUY NO <-> SELL NO
+                const ask = await Ask.find({
+                    orderbookId: orderbook._id,
+                    stockType: side,
+                    status: { $in: ["OPEN", "PARTIALLY_FILLED"]},
+                    remainingQty: { $gt:0},
+                    price: { $lte: price},
+                    userId: { $ne : userId}
+                }).session(session)
+
+                for (const ask of ask){
+                    candidates.push({
+                        order: ask,
+                        kind: "TRANSFER",
+                        effectivePrice: ask.price
+                    })
+                }
+
+                //BUY YES <-> BUY NO
+                const oppositeBook = await orderbookModel.findOne({
+                    marketId,
+                    type: oppositeSide
+                }).session(session)
+
+                if(!oppositeBook){
+                    throw new Error("ORDERBOOK_NOT_FOUND")
+                }
+                const oppositeBids = await Bid.find({
+                    orderbookId: orderbook._id,
+                    stockType: oppositeSide,
+                    status: { $in: ["OPEN", "PARTIALLY_FILLED"]},
+                    remainingQty: { $gt: 0},
+                    price: { $gte : 100 - price},
+                    userId: { $ne : userId}
+                }).session(session)
+
+                for (const bid of oppositeBids){
+                    candidates.push({
+                        order: bid,
+                        kind: "CREATE",
+                        effectivePrice: 100 - bid.price
+                    })
+                }
+            }   
             })
 
             
