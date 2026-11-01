@@ -25,7 +25,7 @@ export async function signup(req, res) {
         const user = await UserModel.create({
             username,
             password: hashed_pass,
-            balance: 0
+            usdbalance: 0
         })
 
         return res.status(200).json({id: user._id })
@@ -70,14 +70,14 @@ export async function onramp(req, res) {
         }
         const user = await UserModel.findByIdAndUpdate(
             req.userId,
-            {$inc: {balance: data.amount}},
+            {$inc: {usdbalance: data.amount}},
             { new : true})
 
         if (!user) {
             return res.status(404).json({ message: "User not found" })
         }
 
-        return res.status(200).json({balance: user.balance})
+        return res.status(200).json({usdbalance: user.usdbalance})
     } catch (e) {
         return res.status(500).json({message:e.message})
     }

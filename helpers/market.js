@@ -8,13 +8,13 @@ export function opposite(side){
     return side === "YES" ? "NO" : "YES"
 }
 
-export function orderstatus(remaining, original){
+export function orderStatus(remaining, original){
     if ( remaining === 0) return "FILLED"
     if ( remaining == original) return "OPEN"
     return "PARTIALLY_FILLED"
 }
 
-export async function addStock( userId, quantity, marketId, session , side) {
+export async function addStock( userId, marketId, side, quantity, session ) {
     await stockbalanceModel.updateOne({
         userId, 
         marketId, 
@@ -31,7 +31,7 @@ export async function addStock( userId, quantity, marketId, session , side) {
 export async function updatemaker(order, matchedQty, session){
     order.remainingQty -= matchedQty
 
-    order.status = orderstatus(
+    order.status = orderStatus (
         order.remainingQty,
         order.quantity
     )
@@ -56,7 +56,14 @@ export async function consumeBuyFunds(userId, limitPrice, executionPrice, matche
 
 }
 
-export async function recordTrade(maker, taker, makerPrice, takerPrice, quantity, session) {
+export async function recordTrade({
+  maker,
+  taker,
+  makerPrice,
+  takerPrice,
+  quantity,
+  session
+}) {
     const tradeId = new mongoose.Types.ObjectId()
 
     await fillModel.create([
@@ -80,7 +87,7 @@ export async function recordTrade(maker, taker, makerPrice, takerPrice, quantity
             type: taker.action,
             isMaker: false
         }
-    ])
+    ], { session, ordered: true })
 }
 
 

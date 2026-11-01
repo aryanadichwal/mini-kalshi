@@ -18,7 +18,7 @@ const asksSchema = new Schema(
 
     stockType: {
       type: String,
-      enum: ["yes", "no"],
+      enum: ["YES", "NO"],
       required: true
     },
 
@@ -34,7 +34,7 @@ const asksSchema = new Schema(
       min: 0
     },
 
-    qty: {
+    quantity: {
       type: Number,
       required: true,
       min: 1

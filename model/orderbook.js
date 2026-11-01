@@ -7,4 +7,9 @@ const orderbookSchema = new Schema({
     type : { type : String , enum:["YES", "NO"], required: true}
 })
 
+orderbookSchema.index(
+    { marketId: 1, type: 1 },
+    { unique: true }
+)
+
 export const orderbookModel = mongoose.model("orderbooks", orderbookSchema)
