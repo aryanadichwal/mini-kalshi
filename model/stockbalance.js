@@ -7,8 +7,8 @@ const stockbalanceSchema = new Schema({
     userId: { type : Schema.Types.ObjectId, ref:"users", required: true},
     marketId: { type : Schema.Types.ObjectId, ref:"markets", required: true},
     type: { type : String, enum:["YES", "NO"], required: true}, 
-    quantity: { type : Number,required: true},
-    locked: { type : Number, required: true}
+    quantity: { type : Number,required: true, default: 0},
+    locked: { type : Number, required: true, default: 0}
 })
 
 stockbalanceSchema.index(
