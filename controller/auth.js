@@ -3,6 +3,8 @@ import bcrypt from "bcrypt"
 
 import { SignupSchema, SigninSchema, OnrampSchema } from "../types/auth"
 import { UserModel } from "../model/user"
+import { transectionModel } from "../model/trancsectionLedger"
+import mongoose from "mongoose"
 
 
 
@@ -63,22 +65,63 @@ export async function signin(req, res) {
 }
 
 export async function onramp(req, res) {
+    let session 
     try{
         const {success, data} = OnrampSchema.safeParse(req.body)
         if(!success){
             return res.status(422).json({error:"Invalid amount"})
         }
-        const user = await UserModel.findByIdAndUpdate(
-            req.userId,
-            {$inc: {usdbalance: data.amount}},
-            { new : true})
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" })
+        let ledgerResult 
+        session = await mongoose.startSession()
+        await session.withTransaction(async()=>{
+            const user = await UserModel.findByIdAndUpdate(
+                req.userId,
+                {$inc: {usdbalance: data.amount}},
+                { new : true, session, ordered: true})
+            
+            if (!user) {
+                throw new Error("NO_USER")
+            }
+    
+            const eventId = new mongoose.Types.ObjectId()
+    
+            const [ledger] = await transectionModel.create([{
+                userId: req.userId,
+                eventId: eventId,
+                eventType: "ONRAMP",
+                usdDelta: +data.amount,
+            }], { session, ordered: true})
+            
+            ledgerResult = {
+                userId: ledger.userId,
+                eventId: ledger.eventId,
+                eventType: ledger.eventType,
+                usdDelta: ledger.usdDelta,
+            }
+        })
+        
+        return res.status(200).json({data: ledgerResult})
+    } catch (error) {
+        const errors = {
+            NO_USER:[404,"User not found"]
         }
 
-        return res.status(200).json({usdbalance: user.usdbalance})
-    } catch (e) {
-        return res.status(500).json({message:e.message})
+        if (errors[error.message]){
+            const [status, message] = errors[error.message]
+
+            return res.status(status).json({
+                error: message
+              })
+        }        
+        console.error("onRamp error:", error);
+
+        return res.status(500).json({
+        error: "Could not process onRamp"
+        })
+    } finally {
+        if(session){
+            session.endSession()
+        }
     }
 }
