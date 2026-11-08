@@ -74,10 +74,12 @@ export async function onramp(req, res) {
 
         let ledgerResult 
         session = await mongoose.startSession()
+        const amountCents = Math.round(data.amount * 100)
+        
         await session.withTransaction(async()=>{
             const user = await UserModel.findByIdAndUpdate(
                 req.userId,
-                {$inc: {usdbalance: data.amount}},
+                {$inc: {usdbalance: amountCents}},
                 { new : true, session, ordered: true})
             
             if (!user) {
@@ -90,7 +92,7 @@ export async function onramp(req, res) {
                 userId: req.userId,
                 eventId: eventId,
                 eventType: "ONRAMP",
-                usdDelta: +data.amount,
+                usdDelta: +amountCents,
             }], { session, ordered: true})
             
             ledgerResult = {

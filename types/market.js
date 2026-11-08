@@ -17,3 +17,9 @@ export const SplitSchema = z.object({
     marketId: z.string().regex(/^[a-f\d]{24}$/i),
     amount: z.number().int().min(1),   
 })
+
+export const MergeSchema = z.object({
+    marketId: z.string().regex(/^[a-f\d]{24}$/i),
+    pairQuanity:z.number().int().positive(),
+
+})

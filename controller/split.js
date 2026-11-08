@@ -33,26 +33,24 @@ export async function splitOrder(req,res){
                 throw new Error("USER_NOT_FOUND")
             }
 
-            const availableBalance = user.usdbalance - user.lockedusdBalance
-            if( availableBalance < data.amount){
+            const pairCount  = data.amount
+            
+            const debit = data.amount * 100
+
+            const usdCents = pairCount  * 100
+
+            const availableBalance = user.usdbalance 
+            if( availableBalance < usdCents){
                 throw new Error("INSUFFICIENT_BALANCE")
             }
 
-            const pair = data.amount
             
-            const debit = data.amount
-
             const result = await UserModel.updateOne(
-                {_id: req.userId,
-                    $expr:{
-                        $gte:[
-                            { $subtract: ["$usdbalance", "$lockedusdBalance"]},
-                            debit
-                        ]
-                    }
+                {   _id: req.userId,
+                    usdbalance: { $gte: debit }
                 },
                 {
-                    $inc: { usdbalance: -data.amount}
+                    $inc: { usdbalance: -usdCents}
                 },
                 { session, ordered: true}
             )
@@ -74,7 +72,7 @@ export async function splitOrder(req,res){
                     userId: req.userId,
                     marketId: data.marketId,
                     type:"YES",
-                    quantity: pair,
+                    quantity: pairCount ,
                     locked: 0
                 }, {session, ordered: true})
             } else {
@@ -85,7 +83,7 @@ export async function splitOrder(req,res){
                     },
                     {
                         $inc:{
-                            quantity: pair
+                            quantity: pairCount 
                         }
                     },
                     {session , ordered: true}
@@ -103,7 +101,7 @@ export async function splitOrder(req,res){
                     userId: req.userId,
                     marketId: data.marketId,
                     type:"NO",
-                    quantity: pair,
+                    quantity: pairCount ,
                     locked: 0
                 },{session, ordered: true})
             } else {
@@ -114,7 +112,7 @@ export async function splitOrder(req,res){
                     },
                     {
                         $inc:{
-                            quantity: pair
+                            quantity: pairCount 
                         }
                     },
                     {session , ordered: true}
@@ -125,7 +123,7 @@ export async function splitOrder(req,res){
                 _id:data.marketId,
             },{
                 $inc:{
-                    totalIssued: pair
+                    totalIssued: pairCount 
                 }
             }, { session, ordered: true})
 
@@ -133,9 +131,9 @@ export async function splitOrder(req,res){
                 userId: req.userId,
                 eventId: eventId,
                 eventType: "SPLIT",
-                usdDelta: -data.amount,
-                noDelta: pair,
-                yesDelta: pair,
+                usdDelta: -usdCents,
+                noDelta: pairCount ,
+                yesDelta: pairCount ,
                 marketId: data.marketId
             }], { session, ordered: true})
 
